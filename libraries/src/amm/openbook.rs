@@ -11,6 +11,7 @@ use safe_transmute::{
 use serum_dex::state::{gen_vault_signer_key, AccountFlag, Market, MarketState, MarketStateV2};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
+    account::Account,
     instruction::Instruction,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
@@ -87,6 +88,66 @@ pub fn get_keys_for_market<'a>(
             state.inner
         } else {
             println!("MarketStateV");
+            let state = transmute_one_pedantic::<MarketState>(transmute_to_bytes(&words))
+                .map_err(|e| e.without_src())?;
+            state.check_flags(true)?;
+            state
+        }
+    };
+    let vault_signer_key =
+        gen_vault_signer_key(market_state.vault_signer_nonce, market, program_id)?;
+    assert_eq!(
+        transmute_to_bytes(&identity(market_state.own_address)),
+        market.as_ref()
+    );
+    Ok(MarketPubkeys {
+        market: Box::new(*market),
+        req_q: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.req_q))).unwrap(),
+        ),
+        event_q: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.event_q))).unwrap(),
+        ),
+        bids: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.bids))).unwrap(),
+        ),
+        asks: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.asks))).unwrap(),
+        ),
+        coin_vault: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.coin_vault))).unwrap(),
+        ),
+        pc_vault: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.pc_vault))).unwrap(),
+        ),
+        vault_signer_key: Box::new(vault_signer_key),
+        coin_mint: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.coin_mint))).unwrap(),
+        ),
+        pc_mint: Box::new(
+            Pubkey::try_from(transmute_one_to_bytes(&identity(market_state.pc_mint))).unwrap(),
+        ),
+        coin_lot_size: market_state.coin_lot_size,
+        pc_lot_size: market_state.pc_lot_size,
+    })
+}
+
+#[cfg(target_endian = "little")]
+pub fn get_keys_for_market_from_account<'a>(
+    account: &Account,
+    program_id: &'a Pubkey,
+    market: &'a Pubkey,
+) -> Result<MarketPubkeys> {
+    let account_data: Vec<u8> = account.data.clone(); //client.get_account_data(&market)?;
+    let words: Cow<[u64]> = remove_dex_account_padding(&account_data)?;
+    let market_state: MarketState = {
+        let account_flags = Market::account_flags(&account_data)?;
+        if account_flags.intersects(AccountFlag::Permissioned) {
+            let state = transmute_one_pedantic::<MarketStateV2>(transmute_to_bytes(&words))
+                .map_err(|e| e.without_src())?;
+            state.check_flags(true)?;
+            state.inner
+        } else {
             let state = transmute_one_pedantic::<MarketState>(transmute_to_bytes(&words))
                 .map_err(|e| e.without_src())?;
             state.check_flags(true)?;

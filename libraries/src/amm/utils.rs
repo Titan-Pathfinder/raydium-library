@@ -2,8 +2,12 @@ use crate::common;
 use anyhow::Result;
 
 use common::rpc;
+use raydium_amm::state::Loadable;
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::pubkey::Pubkey;
+use solana_sdk::{
+    account::{Account, ReadableAccount},
+    pubkey::Pubkey,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct AmmKeys {
@@ -135,4 +139,37 @@ pub fn load_amm_keys(
         market_program: amm.market_program,
         nonce: amm.nonce as u8,
     })
+}
+
+pub fn load_multiple_amm_keys(
+    amm_program: &Pubkey,
+    amm_keys: &Vec<Pubkey>,
+    amm_pool_accounts: &Vec<Account>,
+) -> Result<Vec<AmmKeys>> {
+    let mut result: Vec<_> = Vec::new();
+
+    for (account, key) in amm_pool_accounts.iter().zip(amm_keys) {
+        let amm = raydium_amm::state::AmmInfo::load_from_bytes(account.data())?;
+        let data = AmmKeys {
+            amm_pool: *key,
+            amm_target: amm.target_orders,
+            amm_coin_vault: amm.coin_vault,
+            amm_pc_vault: amm.pc_vault,
+            amm_lp_mint: amm.lp_mint,
+            amm_open_order: amm.open_orders,
+            amm_coin_mint: amm.coin_vault_mint,
+            amm_pc_mint: amm.pc_vault_mint,
+            amm_authority: raydium_amm::processor::Processor::authority_id(
+                amm_program,
+                raydium_amm::processor::AUTHORITY_AMM,
+                amm.nonce as u8,
+            )?,
+            market: amm.market,
+            market_program: amm.market_program,
+            nonce: amm.nonce as u8,
+        };
+        result.push(data);
+    }
+
+    Ok(result)
 }
