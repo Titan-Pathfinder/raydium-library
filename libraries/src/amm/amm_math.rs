@@ -49,7 +49,6 @@ pub fn calculate_pool_vault_amounts(
             // get multiple accounts at the same time to ensure data consistency
             let load_pubkeys = vec![
                 *amm_pool,
-                amm_keys.amm_target,
                 amm_keys.amm_pc_vault,
                 amm_keys.amm_coin_vault,
                 amm_keys.amm_open_order,
@@ -57,17 +56,12 @@ pub fn calculate_pool_vault_amounts(
                 *market_keys.event_q,
             ];
             let rsps = rpc::get_multiple_accounts(client, &load_pubkeys)?;
-            let accounts = array_ref![rsps, 0, 7];
-            let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account, amm_open_orders_account, market_account, market_event_q_account] =
+            let accounts = array_ref![rsps, 0, 6];
+            let [amm_account, amm_pc_vault_account, amm_coin_vault_account, amm_open_orders_account, market_account, market_event_q_account] =
                 accounts;
             let amm: raydium_amm::state::AmmInfo =
                 transmute_one_pedantic::<raydium_amm::state::AmmInfo>(transmute_to_bytes(
                     &amm_account.as_ref().unwrap().clone().data,
-                ))
-                .map_err(|e| e.without_src())?;
-            let _amm_target: raydium_amm::state::TargetOrders =
-                transmute_one_pedantic::<raydium_amm::state::TargetOrders>(transmute_to_bytes(
-                    &amm_target_account.as_ref().unwrap().clone().data,
                 ))
                 .map_err(|e| e.without_src())?;
             let amm_pc_vault = spl_token::state::Account::unpack(
@@ -204,18 +198,13 @@ pub fn calculate_pool_vault_amounts_from_accounts(
     market_keys: &openbook::MarketPubkeys,
     rsps: &Vec<Option<Account>>,
 ) -> Result<CalculateResult> {
-    let accounts = array_ref![rsps, 0, 7];
-    let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account, amm_open_orders_account, market_account, market_event_q_account] =
+    let accounts = array_ref![rsps, 0, 6];
+    let [amm_account, amm_pc_vault_account, amm_coin_vault_account, amm_open_orders_account, market_account, market_event_q_account] =
         accounts;
     let amm: raydium_amm::state::AmmInfo = transmute_one_pedantic::<raydium_amm::state::AmmInfo>(
         transmute_to_bytes(&amm_account.as_ref().unwrap().clone().data),
     )
     .map_err(|e| e.without_src())?;
-    let _amm_target: raydium_amm::state::TargetOrders =
-        transmute_one_pedantic::<raydium_amm::state::TargetOrders>(transmute_to_bytes(
-            &amm_target_account.as_ref().unwrap().clone().data,
-        ))
-        .map_err(|e| e.without_src())?;
     let amm_pc_vault =
         spl_token::state::Account::unpack(&amm_pc_vault_account.as_ref().unwrap().clone().data)
             .unwrap();
