@@ -1,7 +1,7 @@
 [package]
 name = "client"
 version = "0.1.0"
-edition = "2018"
+edition.workspace = true
 
 [[bin]]
 name = "client"
@@ -10,11 +10,9 @@ path = "src/main.rs"
 
 [dependencies]
 raydium-library = { path = "../libraries" }
-spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "2.2.0", features = [
-    "no-entrypoint",
-] }
-spl-token-2022 = { version = "0.9.0", features = ["no-entrypoint"] }
-solana-client = "1.17.34"
-solana-sdk = "1.17.34"
+spl-token.workspace = true
+spl-associated-token-account.workspace = true
+spl-token-2022.workspace = true
+solana-client.workspace = true
+solana-sdk.workspace = true
 anyhow = "1.0.53"

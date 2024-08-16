@@ -1,4 +1,5 @@
 use anyhow::Result;
+use base64::{engine::general_purpose::STANDARD, Engine};
 use solana_client::{
     rpc_client::RpcClient,
     rpc_config::RpcSendTransactionConfig,
@@ -28,7 +29,7 @@ pub fn simulate_transaction(
     sig_verify: bool,
     cfg: CommitmentConfig,
 ) -> RpcResult<RpcSimulateTransactionResult> {
-    let serialized_encoded = base64::encode(bincode::serialize(transaction).unwrap());
+    let serialized_encoded = STANDARD.encode(bincode::serialize(transaction).unwrap());
     client.send(
         RpcRequest::SimulateTransaction,
         serde_json::json!([serialized_encoded, {
